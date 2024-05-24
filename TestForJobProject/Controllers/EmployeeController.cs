@@ -1,120 +1,150 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using TestForJobProject.Interfaces;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TestForJobProject.Context;
 using TestForJobProject.Models;
 
 namespace TestForJobProject.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class EmployeeController : ControllerBase
+    public class EmployeeController : Controller
     {
-        private readonly IEmployeeService _employeeService;
-        public EmployeeController(IEmployeeService employeeService) 
+
+        private readonly DataContext _context;
+
+        public EmployeeController(DataContext employeeService)
         {
-            _employeeService = employeeService;
+            _context = employeeService;
         }
 
-        [HttpGet]
-        [ProducesResponseType(200, Type = typeof(IEnumerable<Employee>))]
-        public IActionResult GetEmployees()
+        // GET: Employee
+        public async Task<IActionResult> Index()
         {
-            var categories = _employeeService.GetEmployees();
+            var employees = await _context.Employees.ToListAsync();
+            return View(employees);
+        }
 
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        public async Task<IActionResult> FillForm(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
 
-            return Ok(categories);
+            var employee = await _context.Employees.FindAsync(id);
+            if (employee == null)
+            {
+                return NotFound();
+            }
+
+            // Aquí redirige a una vista de formulario de edición y pasa el objeto empleado
+            return View("Edit", employee);
         }
 
         [HttpPost]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(400)]
-        public IActionResult CreateCategory([FromBody] Employee employee)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("Id,Name,Address,DOB,Salary,IsActive")] Employee employee)
         {
-            if (employee == null)
-                return BadRequest(ModelState);
+            // Convertir el valor del dropdown a un booleano
+            employee.IsActive = employee.IsActive.Equals("true") ? true : false;
 
-            var employeeFind = _employeeService.GetEmployees()
-                .Where(c => c.Name.Trim().ToUpper() == employee.Name.TrimEnd().ToUpper())
-                .FirstOrDefault();
-
-            if (employeeFind != null)
+            if (ModelState.IsValid)
             {
-                ModelState.AddModelError("", "Employee already exists");
-                return StatusCode(422, ModelState);
+                // Validar la fecha de nacimiento (DOB)
+                DateTime minDateOfBirth = new DateTime(1950, 1, 1);
+                DateTime maxDateOfBirth = DateTime.Today;
+                if (employee.DOB < minDateOfBirth || employee.DOB > maxDateOfBirth)
+                {
+                    ModelState.AddModelError("DOB", $"Date of Birth must be between {minDateOfBirth.ToString("MM/dd/yyyy")} and {maxDateOfBirth.ToString("MM/dd/yyyy")}.");
+                    return View(employee);
+                }
+
+                // Validar el rango de salario (Salary)
+                decimal minSalary = 100;
+                decimal maxSalary = 50000;
+                if (employee.Salary < minSalary || employee.Salary > maxSalary)
+                {
+                    ModelState.AddModelError("Salary", $"Salary must be between {minSalary} and {maxSalary}.");
+                    return View(employee);
+                }
+
+                // Validar si ya existe un empleado con el mismo nombre
+                if (_context.Employees.Any(e => e.Name == employee.Name))
+                {
+                    ModelState.AddModelError("Name", "Employee with this name already exists.");
+                    return View(employee);
+                }
+
+                _context.Add(employee);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
             }
-
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if (!_employeeService.CreateEmployee(employee))
-            {
-                ModelState.AddModelError("", "Something went wrong while saving the employee");
-                return StatusCode(500, ModelState);
-            }
-
-            return Ok("Employee successfully created");
+            return View(employee);
         }
 
-        [HttpPut("{employeeId}")]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(404)]
-        public IActionResult UpdateEmployee(int employeeId, [FromBody] Employee employee)
+        // GET: Employee/Edit/5
+        public async Task<IActionResult> Edit(int? id)
         {
-            if (employee == null)
-            {
-                ModelState.AddModelError("", "Please add valid info");
-                return BadRequest(ModelState);
-            }
-
-            if (employeeId != employee.Id)
-            {
-                ModelState.AddModelError("", "Employee doesn't exist");
-                return BadRequest(ModelState);
-            }
-               
-
-            if (!_employeeService.EmployeeExists(employeeId))
-            {
-                ModelState.AddModelError("", "Employee already exists");
-                return NotFound();
-            }
-
-            if (!ModelState.IsValid)
-                return BadRequest();
-
-            if (!_employeeService.UpdateEmployee(employee))
-            {
-                ModelState.AddModelError("", "Something went wrong updating the employee");
-                return StatusCode(500, ModelState);
-            }
-
-            return NoContent();
-        }
-
-        [HttpDelete("{employeeId}")]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(404)]
-        public IActionResult DeleteEmployee(int employeeId)
-        {
-            if (!_employeeService.EmployeeExists(employeeId))
+            if (id == null)
             {
                 return NotFound();
             }
 
-            var employeeToDelete = _employeeService.GetEmployee(employeeId);
-
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if (!_employeeService.DeleteEmployee(employeeToDelete))
+            var employee = await _context.Employees.FindAsync(id);
+            if (employee == null)
             {
-                ModelState.AddModelError("", "Something went wrong deleting employee");
+                return NotFound();
+            }
+            return View(employee);
+        }
+
+        // POST: Employee/Edit/5
+        [HttpPost, ActionName("Update")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(string name, [Bind("Id,Name,Address,DOB,Salary,IsActive")] Employee employee)
+        {
+            if (name != employee.Name)
+            {
+                return NotFound();
             }
 
-            return NoContent();
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(employee);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!EmployeeExists(employee.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(employee);
+        }
+
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var employee = await _context.Employees.FindAsync(id);
+            _context.Employees.Remove(employee);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        private bool EmployeeExists(int id)
+        {
+            return _context.Employees.Any(e => e.Id == id);
         }
     }
+
 }

@@ -1,0 +1,105 @@
+﻿@model IEnumerable<TestForJobProject.Models.Employee>
+@{
+    ViewData["Title"] = "Index";
+}
+
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+</head>
+
+
+<script>
+    function showSuccessMessage() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Employee deleted successfully!',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    }
+
+    function showSuccessCreatedMessage() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Employee created successfully!',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    }
+</script>
+
+<h1 class="text-center">Employee Management</h1>
+<div class="row justify-content-center p-4">
+    <div class="col-md-8">
+        <h2>Add New Employee</h2>
+        <form id="employeeForm" asp-action="Create" method="post">
+            <div class="form-group">
+                <label asp-for="Name" class="control-label">Name:</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Address" class="control-label">Address:</label>
+                <input asp-for="Address" class="form-control" />
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DOB" class="control-label">Date of Birth:</label>
+                <input asp-for="DOB" type="date" class="form-control" />
+                <span asp-validation-for="DOB" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Salary" class="control-label">Salary:</label>
+                <input asp-for="Salary" type="number" class="form-control" />
+                <span asp-validation-for="Salary" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsActive" class="control-label">Is Active?</label>
+                <select asp-for="IsActive" class="form-control">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+            <button type="button" asp-controller="Employee" asp-action="Create" class="btn btn-success">Create Employee</button>
+        </form>
+        <button type="submit" class="btn btn-primary mt-2" asp-controller="Employee" asp-action="Update" onclick="showSuccessCreatedMessage()">Update Employee</button>
+    </div>
+</div>
+
+
+<h2 class="text-center mt-5">Employee List</h2>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Date of Birth</th>
+                    <th>Salary</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var employee in Model.Where(e => e.IsActive))
+                {
+                    <tr>
+                        <td>@employee.Name</td>
+                        <td>@employee.Address</td>
+                        <td>@employee.DOB.ToString("MM/dd/yyyy")</td>
+                        <td>@employee.Salary</td>
+                        <td>@(employee.IsActive ? "Yes" : "No")</td>
+                        <td>
+                            <a class="btn btn-info" onclick="fillForm('@employee.Id')" asp-controller="Employee" asp-action="FillForm" asp-route-id="@employee.Id">Details</a>
+                            <a class="btn btn-danger" asp-controller="Employee" asp-action="Delete" asp-route-id="@employee.Id" onclick="showSuccessMessage()">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

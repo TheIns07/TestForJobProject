@@ -1,16 +1,13 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TestForJobProject.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews(); // Usamos AddControllersWithViews para habilitar el soporte para vistas MVC.
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-//DbContext for connection for SQL
+// DbContext for connection for SQL
 builder.Services.AddTransient<Seed>();
 
 builder.Services.AddDbContext<DataContext>(options =>
@@ -20,9 +17,9 @@ builder.Services.AddDbContext<DataContext>(options =>
 
 var app = builder.Build();
 
-//Configuration to run the Seed Data
+// Configuration to run the Seed Data
 if (args.Length == 1 && args[0].ToLower() == "seeddata")
-SeedData(app);
+    SeedData(app);
 
 void SeedData(IHost app)
 {
@@ -35,17 +32,17 @@ void SeedData(IHost app)
     }
 }
 
-// Configure the HTTP request pipeline. Enable-Migrations -ContextTypeName TestForJobProject.Models.DataContext
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
+// Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Employee}/{action=Index}/{id?}"); // Configuramos la ruta predeterminada para el enrutamiento de MVC.
 
-app.MapControllers();
+// Configure routing for the home page
+app.MapGet("/", (Func<Task<IActionResult>>)(() =>
+{
+    return Task.FromResult<IActionResult>(new RedirectResult("~/Employee/Index"));
+}));
 
 app.Run();
