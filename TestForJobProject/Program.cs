@@ -35,14 +35,14 @@ void SeedData(IHost app)
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
 app.UseAuthorization();
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Employee}/{action=Index}/{id?}"); // Configuramos la ruta predeterminada para el enrutamiento de MVC.
 
-// Configure routing for the home page
 app.MapGet("/", (Func<Task<IActionResult>>)(() =>
 {
     return Task.FromResult<IActionResult>(new RedirectResult("~/Employee/Index"));
 }));
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
